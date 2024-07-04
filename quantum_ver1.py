@@ -23,9 +23,10 @@
 from amplify import VariableGenerator
 gen = VariableGenerator()
 q = gen.array("Binary", 100)
-C = 100 # カーディナリティ制約
+Cardi = 10 # カーディナリティ制約
 # total_net_assets[0] = 1000000 # 純資産総額
 total_unit = 1000000 # 総口数
+
 
 
 
@@ -42,10 +43,12 @@ for i in range(18):
 
 
 
+
 # 3. 銘柄、購入数の決定
 lst_sort = sorted(lst, reverse=True, key=lambda x: x[4])
-# for i in range(10):
-#     print(lst_sort[i])
+code_ = []
+for i in range(Cardi):
+    code_.append(lst_sort[i][2]) # 上位10銘柄の銘柄コードをcode_に格納
 
 # Jquantsから株価データを取得
 import requests
@@ -58,16 +61,23 @@ r_token = requests.post(f"https://api.jquants.com/v1/token/auth_refresh?refresht
 idToken = r_token.json()["idToken"]
 headers = {'Authorization': 'Bearer {}'.format(idToken)}
 
-code_ = "7203"
+# 2023年度の構成銘柄上位10個の株価データ取得
+Close_Values = [[] for _ in range(Cardi)]
+time_point = []
 from_ = "2023-04-01"
 to_ = "2024-03-31"
 
-res = requests.get(f"https://api.jquants.com/v1/prices/daily_quotes?code={code_}&from={from_}&to={to_}", headers=headers)
-data = res.json()
-# print(data)
+for i in range(Cardi):
+    res = requests.get(f"https://api.jquants.com/v1/prices/daily_quotes?code={code_[i]}&from={from_}&to={to_}", headers=headers)
+    data = res.json()
+    close_values = [quote["Close"] for quote in data["daily_quotes"]]
+    for j in range(len(close_values)):
+        if i==0:
+            time_point.append(data["daily_quotes"][j]["Date"])
+        Close_Values[i].append(close_values[j])
+        
+# print(Close_Values[i][0])
 # print("銘柄コード", code_, "の", data["daily_quotes"][100]["Date"], "の株価:", data["daily_quotes"][100]["Close"])
-close_values = [quote["Close"] for quote in data["daily_quotes"]]
-# print(close_values[1])
 # print(data["daily_quotes"][100]["Date"])
 
 
@@ -80,10 +90,13 @@ japanize_matplotlib.japanize()
 
 price_buy = close_values[0]
 graph_point = []
-time_point = []
-for x in range(len(close_values)):
-    graph_point.append(close_values[x] - price_buy)
-    time_point.append(data["daily_quotes"][x]["Date"])
+for i in range(Cardi):
+    for j in range(len(Close_Values[i])):
+        if i==0:
+            graph_point.append(Close_Values[i][j] - Close_Values[i][0])
+        else:
+            graph_point[j] = graph_point[j] + Close_Values[i][j] - Close_Values[i][0]
+print(graph_point)
 # print(len(close_values))
 
 # plt.plot(time_point, graph_point)
@@ -92,7 +105,7 @@ ax.plot(time_point, graph_point)
 ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
 
 plt.xticks(rotation=30)
-plt.title("2023年4月から2024年3月までの基準価格推移")  
+plt.title("2023年4月から2024年3月までの上位10銘柄のリターン")  
 plt.ylabel("基準価格")
 plt.show()
 
