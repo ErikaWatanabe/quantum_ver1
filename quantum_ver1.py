@@ -23,7 +23,7 @@
 from amplify import VariableGenerator
 gen = VariableGenerator()
 q = gen.array("Binary", 100)
-Cardi = 10 # カーディナリティ制約
+Cardi = 100 # カーディナリティ制約
 # total_net_assets[0] = 1000000 # 純資産総額
 total_unit = 1000000 # 総口数
 
@@ -53,7 +53,7 @@ for i in range(Cardi):
 # Jquantsから株価データを取得
 import requests
 import json
-import pandas as pd
+# import pandas as pd
 mail_password={"mailaddress":"e.cos2612@outlook.jp", "password":"26Erika12122"}
 r_ref = requests.post("https://api.jquants.com/v1/token/auth_user", data=json.dumps(mail_password))
 RefreshToken = r_ref.json()["refreshToken"]
@@ -80,6 +80,23 @@ for i in range(Cardi):
 # print("銘柄コード", code_, "の", data["daily_quotes"][100]["Date"], "の株価:", data["daily_quotes"][100]["Close"])
 # print(data["daily_quotes"][100]["Date"])
 
+# TOPIXの値動き取得
+import pandas_datareader.data as web
+from datetime import date
+import pandas as pd
+point_topix = []
+
+source = 'stooq'
+dt_s = date(2023, 4, 1)
+dt_e = date(2024, 3, 29)
+symbol = '^TPX'
+df_topix = web.DataReader(symbol, source, dt_s, dt_e)
+df_topix = df_topix.sort_values("Date").reset_index()
+# print(df_topix.at[0, "Close"]) # pandasでデータ取得するときはatとか使う
+for i in range(len(df_topix)):
+    point_topix.append(df_topix.at[i, "Close"])
+
+
 
 
 # 4. グラフ化
@@ -89,29 +106,31 @@ from matplotlib.ticker import MaxNLocator
 japanize_matplotlib.japanize()
 
 price_buy = close_values[0]
-graph_point = []
+point_portfolio = []
 for i in range(Cardi):
     for j in range(len(Close_Values[i])):
         if i==0:
-            graph_point.append(Close_Values[i][j] - Close_Values[i][0])
+            point_portfolio.append(Close_Values[i][j] - Close_Values[i][0])
         else:
-            graph_point[j] = graph_point[j] + Close_Values[i][j] - Close_Values[i][0]
-print(graph_point)
-# print(len(close_values))
+            point_portfolio[j] = point_portfolio[j] + Close_Values[i][j] - Close_Values[i][0]
 
-# plt.plot(time_point, graph_point)
-fig, ax = plt.subplots()
-ax.plot(time_point, graph_point)
-ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
 
+fig, ax1 = plt.subplots()
+# TOPIXのプロット
+ax1.plot(time_point, point_topix, label='TOPIX', color='blue')
+ax1.set_ylabel('TOPIX', color='blue')
+ax1.tick_params(axis='y', labelcolor='blue')
+ax1.xaxis.set_major_locator(MaxNLocator(nbins=5))
 plt.xticks(rotation=30)
-plt.title("2023年4月から2024年3月までの上位10銘柄のリターン")  
-plt.ylabel("基準価格")
+
+# Portfolioのプロット
+ax2 = ax1.twinx()
+ax2.plot(time_point, point_portfolio, label='Portfolio', color='green')
+ax2.set_ylabel('ポートフォリオ', color='green')
+ax2.tick_params(axis='y', labelcolor='green')
+
+# グラフの表示
+plt.title("2023年度のTOPIXとポートフォリオ,  C={}".format(Cardi))
+fig.tight_layout()
 plt.show()
 
-
-
-
-
-# for x in range(0, 12):
-#     graph_point[x] = total_net_assets[x] / total_unit
