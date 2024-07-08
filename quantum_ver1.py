@@ -23,7 +23,7 @@
 from amplify import VariableGenerator
 gen = VariableGenerator()
 q = gen.array("Binary", 100)
-Cardi = 100 # カーディナリティ制約
+Cardi = 10 # カーディナリティ制約
 # total_net_assets[0] = 1000000 # 純資産総額
 total_unit = 1000000 # 総口数
 
@@ -62,7 +62,7 @@ idToken = r_token.json()["idToken"]
 headers = {'Authorization': 'Bearer {}'.format(idToken)}
 
 # 2023年度の構成銘柄上位10個の株価データ取得
-Close_Values = [[] for _ in range(Cardi)]
+Close_Values = [[] for _ in range(Cardi)] # i=銘柄, j=日付
 time_point = []
 from_ = "2023-04-01"
 to_ = "2024-03-31"
@@ -75,7 +75,8 @@ for i in range(Cardi):
         if i==0:
             time_point.append(data["daily_quotes"][j]["Date"])
         Close_Values[i].append(close_values[j])
-        
+
+
 # print(Close_Values[i][0])
 # print("銘柄コード", code_, "の", data["daily_quotes"][100]["Date"], "の株価:", data["daily_quotes"][100]["Close"])
 # print(data["daily_quotes"][100]["Date"])
@@ -110,10 +111,11 @@ point_portfolio = []
 for i in range(Cardi):
     for j in range(len(Close_Values[i])):
         if i==0:
-            point_portfolio.append(Close_Values[i][j] - Close_Values[i][0])
+            # point_portfolio.append(Close_Values[i][j] - Close_Values[i][0])
+            point_portfolio.append(Close_Values[i][j])
         else:
-            point_portfolio[j] = point_portfolio[j] + Close_Values[i][j] - Close_Values[i][0]
-
+            # point_portfolio[j] = point_portfolio[j] + Close_Values[i][j] - Close_Values[i][0]
+            point_portfolio[j] = point_portfolio[j] + Close_Values[i][j]
 
 fig, ax1 = plt.subplots()
 # TOPIXのプロット
@@ -132,5 +134,59 @@ ax2.tick_params(axis='y', labelcolor='green')
 # グラフの表示
 plt.title("2023年度のTOPIXとポートフォリオ,  C={}".format(Cardi))
 fig.tight_layout()
-plt.show()
 
+# このプログラムの一番最後の行で表示オンオフできるようにした
+
+
+
+
+# 5.  トラッキングエラー計算
+tracking_error = 0
+
+# 5. 1. 超過リターンの計算
+from datetime import datetime
+from collections import defaultdict
+monthly_return_over = []
+monthly_return_p = []
+monthly_return_t = []
+monthly_data = defaultdict(list)
+
+for date_str in time_point: #日付を扱いやすいように辞書型に変換
+    date = datetime.strptime(date_str, '%Y-%m-%d')
+    month_key = date.strftime('%Y-%m')
+    monthly_data[month_key].append(date_str)
+    
+for key in monthly_data.keys(): #TOPIX,ポートフォリオの月初と月末のリターンを取得
+    first_return_p = point_portfolio[time_point.index(monthly_data[key][0])]
+    last_return_p = point_portfolio[time_point.index(monthly_data[key][-1])]
+    first_return_t = point_topix[time_point.index(monthly_data[key][0])]
+    last_return_t = point_topix[time_point.index(monthly_data[key][-1])]
+    
+    if first_return_p == 0:
+        first_return_p = 1
+    monthly_return_p.append((last_return_p - first_return_p) / first_return_p)
+    monthly_return_t.append((last_return_t - first_return_t) / first_return_t)
+
+for i in range(12): #超過リターンを算出
+    monthly_return_over.append( monthly_return_p[i] - monthly_return_t[i] )
+# print("monthly_return_p : ", monthly_return_p)
+
+
+# 5. 2. 超過リターンの平均の計算
+monthly_return_over_ave = 0
+monthly_return_over_sum = 0
+for i in range(len(monthly_return_over)):
+    monthly_return_over_sum = monthly_return_over_sum + monthly_return_over[i]
+monthly_return_over_ave = monthly_return_over_sum / len(monthly_return_over)
+
+# 5. 3. 超過リターンの標準偏差の計算
+import math
+squared_sum = 0
+for i in range(len(monthly_return_over)):
+    squared_sum = squared_sum + pow( monthly_return_over[i] - monthly_return_over_ave, 2)
+tracking_error = math.sqrt( squared_sum / ( len(monthly_return_over) - 1 ))
+
+print("tracking_error : ", tracking_error * 100, "%")
+
+
+plt.show()
