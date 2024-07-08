@@ -50,10 +50,10 @@ code_ = []
 for i in range(Cardi):
     code_.append(lst_sort[i][2]) # 上位10銘柄の銘柄コードをcode_に格納
 
-# Jquantsから株価データを取得
+# 3. 1. Jquantsから株価データを取得
 import requests
 import json
-# import pandas as pd
+
 mail_password={"mailaddress":"e.cos2612@outlook.jp", "password":"26Erika12122"}
 r_ref = requests.post("https://api.jquants.com/v1/token/auth_user", data=json.dumps(mail_password))
 RefreshToken = r_ref.json()["refreshToken"]
@@ -61,7 +61,7 @@ r_token = requests.post(f"https://api.jquants.com/v1/token/auth_refresh?refresht
 idToken = r_token.json()["idToken"]
 headers = {'Authorization': 'Bearer {}'.format(idToken)}
 
-# 2023年度の構成銘柄上位10個の株価データ取得
+# 3. 2. 2023年度の構成銘柄上位10個の株価データ取得
 Close_Values = [[] for _ in range(Cardi)] # i=銘柄, j=日付
 time_point = []
 from_ = "2023-04-01"
@@ -74,14 +74,13 @@ for i in range(Cardi):
     for j in range(len(close_values)):
         if i==0:
             time_point.append(data["daily_quotes"][j]["Date"])
-        Close_Values[i].append(close_values[j])
-
+        Close_Values[i].append(close_values[j]) # Close_Valuesに各銘柄の終値格納
 
 # print(Close_Values[i][0])
 # print("銘柄コード", code_, "の", data["daily_quotes"][100]["Date"], "の株価:", data["daily_quotes"][100]["Close"])
 # print(data["daily_quotes"][100]["Date"])
 
-# TOPIXの値動き取得
+# 3. 3. TOPIXの値動き取得
 import pandas_datareader.data as web
 from datetime import date
 import pandas as pd
@@ -106,6 +105,7 @@ import japanize_matplotlib
 from matplotlib.ticker import MaxNLocator
 japanize_matplotlib.japanize()
 
+# 4. 1. point_portfolioにポートフォリオのリターン格納
 price_buy = close_values[0]
 point_portfolio = []
 for i in range(Cardi):
@@ -118,23 +118,22 @@ for i in range(Cardi):
             point_portfolio[j] = point_portfolio[j] + Close_Values[i][j]
 
 fig, ax1 = plt.subplots()
-# TOPIXのプロット
+# 4. 2. TOPIXのプロット
 ax1.plot(time_point, point_topix, label='TOPIX', color='blue')
 ax1.set_ylabel('TOPIX', color='blue')
 ax1.tick_params(axis='y', labelcolor='blue')
 ax1.xaxis.set_major_locator(MaxNLocator(nbins=5))
 plt.xticks(rotation=30)
 
-# Portfolioのプロット
+# 4. 3. Portfolioのプロット
 ax2 = ax1.twinx()
 ax2.plot(time_point, point_portfolio, label='Portfolio', color='green')
 ax2.set_ylabel('ポートフォリオ', color='green')
 ax2.tick_params(axis='y', labelcolor='green')
 
-# グラフの表示
+# 4. 4. グラフの表示
 plt.title("2023年度のTOPIXとポートフォリオ,  C={}".format(Cardi))
 fig.tight_layout()
-
 # このプログラムの一番最後の行で表示オンオフできるようにした
 
 
@@ -151,23 +150,23 @@ monthly_return_p = []
 monthly_return_t = []
 monthly_data = defaultdict(list)
 
-for date_str in time_point: #日付を扱いやすいように辞書型に変換
+for date_str in time_point: # 日付を扱いやすいように辞書型に変換
     date = datetime.strptime(date_str, '%Y-%m-%d')
     month_key = date.strftime('%Y-%m')
     monthly_data[month_key].append(date_str)
     
-for key in monthly_data.keys(): #TOPIX,ポートフォリオの月初と月末のリターンを取得
+for key in monthly_data.keys(): # TOPIX,ポートフォリオの月初と月末のリターンを取得
     first_return_p = point_portfolio[time_point.index(monthly_data[key][0])]
     last_return_p = point_portfolio[time_point.index(monthly_data[key][-1])]
     first_return_t = point_topix[time_point.index(monthly_data[key][0])]
     last_return_t = point_topix[time_point.index(monthly_data[key][-1])]
     
-    if first_return_p == 0:
+    if first_return_p == 0: # 分母が0のときの処理、もう少し上手く書けそう
         first_return_p = 1
     monthly_return_p.append((last_return_p - first_return_p) / first_return_p)
     monthly_return_t.append((last_return_t - first_return_t) / first_return_t)
 
-for i in range(12): #超過リターンを算出
+for i in range(12): # 超過リターンを算出
     monthly_return_over.append( monthly_return_p[i] - monthly_return_t[i] )
 # print("monthly_return_p : ", monthly_return_p)
 
