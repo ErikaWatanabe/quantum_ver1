@@ -117,8 +117,9 @@ for i in range(Cardi):
             # point_portfolio[j] = point_portfolio[j] + Close_Values[i][j] - Close_Values[i][0]
             point_portfolio[j] = point_portfolio[j] + Close_Values[i][j]
 
-fig, ax1 = plt.subplots()
+
 # 4. 2. TOPIXのプロット
+fig, ax1 = plt.subplots()
 ax1.plot(time_point, point_topix, label='TOPIX', color='blue')
 ax1.set_ylabel('TOPIX', color='blue')
 ax1.tick_params(axis='y', labelcolor='blue')
